@@ -10,6 +10,12 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+.vscode/
+fennec
+
+config/config.yaml
+deploy/*.yaml
+.config.ini
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
