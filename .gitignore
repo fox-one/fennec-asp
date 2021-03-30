@@ -12,6 +12,7 @@
 *.out
 .vscode/
 fennec
+fennec.*
 
 config/config.yaml
 deploy/*.yaml

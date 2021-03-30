@@ -35,4 +35,4 @@ aws-login:
 	$(shell aws ecr get-login --no-include-email --region ap-northeast-1)
 
 deploy-%: docker-build-%
-	docker push ${REPOSITORY_PATH}/compound-${ENV}:${VERSION}
+	docker push ${REPOSITORY_PATH}/fennec-${ENV}:${VERSION}
