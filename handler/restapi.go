@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"errors"
 	"fennec/core"
 	"fennec/handler/param"
@@ -29,6 +32,7 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 
 		var params struct {
 			WalletName string `json:"wallet_name"`
+			CipherType string `json:"cipher_type"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -41,8 +45,19 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 			return
 		}
 
-		key := mixin.GenerateEd25519Key()
-		user, keyStore, err := dapp.Client.CreateUser(ctx, key, params.WalletName)
+		if params.CipherType == "" {
+			params.CipherType = "rsa"
+		}
+
+		var signer crypto.Signer
+
+		if params.CipherType == "ed25519" {
+			signer = mixin.GenerateEd25519Key()
+		} else {
+			signer = generateRSAKey()
+		}
+
+		user, keyStore, err := dapp.Client.CreateUser(ctx, signer, params.WalletName)
 
 		if err != nil {
 			render.BadRequest(w, err)
@@ -59,4 +74,9 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 
 		render.JSON(w, response)
 	}
+}
+
+func generateRSAKey() *rsa.PrivateKey {
+	private, _ := rsa.GenerateKey(rand.Reader, 1024)
+	return private
 }
