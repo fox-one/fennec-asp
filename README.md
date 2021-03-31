@@ -34,5 +34,14 @@ dapp:
 
 See [Makefile](Makefile)
 
+```
+// build prod executable file
+$make build-prod
 
+// build docker image
+$make docker-build-prod
+
+// push to the docker repository
+$make deploy-prod
+```
 
