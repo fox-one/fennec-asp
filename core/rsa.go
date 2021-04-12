@@ -27,5 +27,27 @@ func ParseRSAPubKeyFromPEMStr(pemStr string) (*rsa.PublicKey, error) {
 		return nil, errors.New("failed to parse PEM block containing the key")
 	}
 
-	return x509.ParsePKCS1PublicKey(block.Bytes)
+	pubKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		p, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		v, found := p.(*rsa.PublicKey)
+		if found {
+			return v, nil
+		}
+		return nil, errors.New("parse ras public key error")
+	}
+
+	return pubKey, nil
+}
+
+func ParseRSAPrivateKeyFromPEMStr(pemStr string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(pemStr))
+	if block == nil {
+		return nil, errors.New("failed to parse PEM block containing the key")
+	}
+
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
