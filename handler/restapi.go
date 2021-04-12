@@ -2,11 +2,6 @@ package handler
 
 import (
 	"crypto"
-	"crypto/ed25519"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"fennec/core"
 	"fennec/handler/param"
@@ -36,7 +31,7 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 		var params struct {
 			WalletName string `json:"wallet_name"`
 			CipherType string `json:"cipher_type"`
-			PrivateKey string `json:"private_key"`
+			PublickKey string `json:"public_key"`
 		}
 
 		if e := param.Binding(r, &params); e != nil {
@@ -49,8 +44,8 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 			return
 		}
 
-		if params.PrivateKey == "" {
-			render.BadRequest(w, errors.New("no private key"))
+		if params.PublickKey == "" {
+			render.BadRequest(w, errors.New("no public key"))
 			return
 		}
 
@@ -61,19 +56,20 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 		var signer crypto.Signer
 
 		if params.CipherType == "ed25519" {
-			prv, err := parseED25519PrivateKeyFromStr(params.PrivateKey)
+			pubK, err := core.ParseED25519PublicKeyFromStr(params.PublickKey)
 			if err != nil {
-				render.BadRequest(w, errors.New("parse ed25519 private key error"))
+				render.BadRequest(w, errors.New("parse ed25519 pub key error"))
 				return
 			}
-			signer = prv
+
+			signer = &core.ED25519Signer{PublicKey: pubK}
 		} else {
-			prv, err := parseRSAPrivateKeyFromPEMStr(params.PrivateKey)
+			pubK, err := core.ParseRSAPubKeyFromPEMStr(params.PublickKey)
 			if err != nil {
-				render.BadRequest(w, errors.New("parse rsa private key error"))
+				render.BadRequest(w, errors.New("parse rsa pub key error"))
 				return
 			}
-			signer = prv
+			signer = &core.RSASigner{PublicKey: pubK}
 		}
 
 		user, keyStore, err := dapp.Client.CreateUser(ctx, signer, params.WalletName)
@@ -93,22 +89,4 @@ func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
 
 		render.JSON(w, response)
 	}
-}
-
-func parseRSAPrivateKeyFromPEMStr(pemStr string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(pemStr))
-	if block == nil {
-		return nil, errors.New("failed to parse PEM block containing the key")
-	}
-
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
-}
-
-func parseED25519PrivateKeyFromStr(str string) (ed25519.PrivateKey, error) {
-	content, err := base64.StdEncoding.DecodeString(str)
-	if err != nil {
-		return nil, err
-	}
-
-	return content, nil
 }

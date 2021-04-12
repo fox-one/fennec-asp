@@ -13,16 +13,16 @@ var rsaCmd = &cobra.Command{
 	Use: "rsa",
 	Run: func(cmd *cobra.Command, args []string) {
 		prv := generateRSAKey()
-		privateKeyBytes := x509.MarshalPKCS1PrivateKey(prv)
+		pubKeyBytes := x509.MarshalPKCS1PublicKey(&prv.PublicKey)
 
-		privatePem := pem.EncodeToMemory(
+		pubPem := pem.EncodeToMemory(
 			&pem.Block{
-				Type:  "RSA PRIVATE KEY",
-				Bytes: privateKeyBytes,
+				Type:  "RSA PUBLIC KEY",
+				Bytes: pubKeyBytes,
 			},
 		)
 
-		cmd.Println(string(privatePem))
+		cmd.Println(string(pubPem))
 	},
 }
 
