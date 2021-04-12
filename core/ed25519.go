@@ -22,7 +22,11 @@ func (s *ED25519Signer) Sign(rand io.Reader, digest []byte, opts crypto.SignerOp
 func ParseED25519PublicKeyFromStr(str string) (ed25519.PublicKey, error) {
 	content, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
-		return nil, err
+		content, err := base64.URLEncoding.DecodeString(str)
+		if err != nil {
+			return nil, err
+		}
+		return content, nil
 	}
 
 	return content, nil

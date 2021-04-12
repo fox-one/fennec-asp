@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/pkg/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -20,7 +21,13 @@ var apiCmd = &cobra.Command{
 		ctx := cmd.Context()
 		log := logger.FromContext(ctx)
 
-		dapp := provideDapp()
+		// dapp := provideDapp()
+		config := provideConfig()
+
+		auth, err := mixin.AuthEd25519FromKeystore(&config.Dapp.Keystore)
+		if err != nil {
+			log.Panic(err)
+		}
 
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)
@@ -35,7 +42,7 @@ var apiCmd = &cobra.Command{
 		}
 
 		{
-			mux.Mount("/api/v1", handler.RestAPIHandler(dapp))
+			mux.Mount("/", handler.MixinProxy(auth))
 		}
 
 		port, _ := cmd.Flags().GetInt("port")

@@ -1,92 +1,48 @@
 package handler
 
 import (
-	"crypto"
-	"errors"
-	"fennec/core"
-	"fennec/handler/param"
-	"fennec/handler/render"
+	"bytes"
+	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"time"
 
 	"github.com/fox-one/mixin-sdk-go"
-	"github.com/go-chi/chi"
-	"github.com/twitchtv/twirp"
+	"github.com/oxtoacart/bpool"
 )
 
-func RestAPIHandler(dapp *core.Wallet) http.Handler {
-	router := chi.NewRouter()
-	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		render.Error(w, twirp.NotFoundError("not found"))
-	})
+const (
+	mixinEndpoint = "https://api.mixin.one"
+)
 
-	router.Post("/users", createUserHandlerFunc(dapp))
+var (
+	xAuthorization = http.CanonicalHeaderKey("Authorization")
+)
 
-	return router
-}
+func MixinProxy(auth *mixin.KeystoreAuth) http.Handler {
+	endpoint, _ := url.Parse(mixinEndpoint)
 
-func createUserHandlerFunc(dapp *core.Wallet) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+	return &httputil.ReverseProxy{
+		BufferPool: bpool.NewBytePool(16, 1024*8),
+		Director: func(req *http.Request) {
+			if token := req.Header.Get(xAuthorization); token == "" {
+				var body []byte
+				if req.Body != nil {
+					body, _ = ioutil.ReadAll(req.Body)
+					_ = req.Body.Close()
+					req.Body = ioutil.NopCloser(bytes.NewReader(body))
+				}
 
-		var params struct {
-			WalletName string `json:"wallet_name"`
-			CipherType string `json:"cipher_type"`
-			PublickKey string `json:"public_key"`
-		}
-
-		if e := param.Binding(r, &params); e != nil {
-			render.BadRequest(w, e)
-			return
-		}
-
-		if params.WalletName == "" {
-			render.BadRequest(w, errors.New("invalid wallet name"))
-			return
-		}
-
-		if params.PublickKey == "" {
-			render.BadRequest(w, errors.New("no public key"))
-			return
-		}
-
-		if params.CipherType == "" {
-			params.CipherType = "rsa"
-		}
-
-		var signer crypto.Signer
-
-		if params.CipherType == "ed25519" {
-			pubK, err := core.ParseED25519PublicKeyFromStr(params.PublickKey)
-			if err != nil {
-				render.BadRequest(w, errors.New("parse ed25519 pub key error"))
-				return
+				sig := mixin.SignRaw(req.Method, req.URL.String(), body)
+				token := auth.SignToken(sig, mixin.RandomTraceID(), time.Minute)
+				req.Header.Set(xAuthorization, "Bearer "+token)
 			}
 
-			signer = &core.ED25519Signer{PublicKey: pubK}
-		} else {
-			pubK, err := core.ParseRSAPubKeyFromPEMStr(params.PublickKey)
-			if err != nil {
-				render.BadRequest(w, errors.New("parse rsa pub key error"))
-				return
-			}
-			signer = &core.RSASigner{PublicKey: pubK}
-		}
-
-		user, keyStore, err := dapp.Client.CreateUser(ctx, signer, params.WalletName)
-
-		if err != nil {
-			render.BadRequest(w, err)
-			return
-		}
-
-		var response struct {
-			User     *mixin.User     `json:"user"`
-			Keystore *mixin.Keystore `json:"keystore"`
-		}
-
-		response.User = user
-		response.Keystore = keyStore
-
-		render.JSON(w, response)
+			req.Header["X-Forwarded-For"] = nil
+			req.Host = endpoint.Host
+			req.URL.Host = endpoint.Host
+			req.URL.Scheme = endpoint.Scheme
+		},
 	}
 }
