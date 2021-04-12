@@ -24,9 +24,12 @@ var apiCmd = &cobra.Command{
 		// dapp := provideDapp()
 		config := provideConfig()
 
-		auth, err := mixin.AuthEd25519FromKeystore(&config.Dapp.Keystore)
+		auth, err := mixin.AuthFromKeystore(&config.Dapp.Keystore)
 		if err != nil {
-			log.Panic(err)
+			auth, err = mixin.AuthEd25519FromKeystore(&config.Dapp.Keystore)
+			if err != nil {
+				log.Panic(err)
+			}
 		}
 
 		mux := chi.NewMux()
