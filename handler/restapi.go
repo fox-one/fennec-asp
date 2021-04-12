@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -26,6 +27,9 @@ func MixinProxy(auth *mixin.KeystoreAuth) http.Handler {
 	return &httputil.ReverseProxy{
 		BufferPool: bpool.NewBytePool(16, 1024*8),
 		Director: func(req *http.Request) {
+			//remove "/api/v1"
+			req.URL.Path = req.URL.Path[len("/api/v1"):]
+
 			if token := req.Header.Get(xAuthorization); token == "" {
 				var body []byte
 				if req.Body != nil {
@@ -34,6 +38,7 @@ func MixinProxy(auth *mixin.KeystoreAuth) http.Handler {
 					req.Body = ioutil.NopCloser(bytes.NewReader(body))
 				}
 
+				fmt.Println(req.URL.String())
 				sig := mixin.SignRaw(req.Method, req.URL.String(), body)
 				token := auth.SignToken(sig, mixin.RandomTraceID(), time.Minute)
 				req.Header.Set(xAuthorization, "Bearer "+token)

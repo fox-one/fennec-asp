@@ -45,7 +45,7 @@ var apiCmd = &cobra.Command{
 		}
 
 		{
-			mux.Mount("/", handler.MixinProxy(auth))
+			mux.Mount("/api/v1", handler.MixinProxy(auth))
 		}
 
 		port, _ := cmd.Flags().GetInt("port")
