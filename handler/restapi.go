@@ -101,12 +101,7 @@ func parseRSAPrivateKeyFromPEMStr(pemStr string) (*rsa.PrivateKey, error) {
 		return nil, errors.New("failed to parse PEM block containing the key")
 	}
 
-	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return priv, nil
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
 
 func parseED25519PrivateKeyFromStr(str string) (ed25519.PrivateKey, error) {
