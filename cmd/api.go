@@ -9,7 +9,6 @@ import (
 	"github.com/fox-one/pkg/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +34,6 @@ var apiCmd = &cobra.Command{
 		mux := chi.NewMux()
 		mux.Use(middleware.Recoverer)
 		mux.Use(middleware.StripSlashes)
-		mux.Use(cors.AllowAll().Handler)
 		mux.Use(logger.WithRequestID)
 		mux.Use(middleware.Logger)
 		mux.Use(middleware.NewCompressor(5).Handler)
