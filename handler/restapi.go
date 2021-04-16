@@ -49,5 +49,14 @@ func MixinProxy(auth *mixin.KeystoreAuth) http.Handler {
 			req.URL.Host = endpoint.Host
 			req.URL.Scheme = endpoint.Scheme
 		},
+		ModifyResponse: func(resp *http.Response) error {
+			resp.Header.Set("Access-Control-Allow-Origin", "*")
+			resp.Header.Set("Access-Control-Allow-Headers", "*")
+			resp.Header.Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, PATCH, DELETE")
+			resp.Header.Set("Access-Control-Allow-Credentials", "false")
+			resp.Header.Del("X-Request-Id")
+
+			return nil
+		},
 	}
 }
