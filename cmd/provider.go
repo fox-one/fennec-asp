@@ -1,23 +1,14 @@
 package cmd
 
 import (
-	"fennec/core"
-
 	"github.com/fox-one/mixin-sdk-go"
 )
 
-func provideConfig() *core.Config {
-	return &cfg
-}
-
-func provideDapp() *core.Wallet {
-	c, err := mixin.NewFromKeystore(&cfg.Dapp.Keystore)
+func provideDapp() *mixin.Client {
+	client, err := mixin.NewFromKeystore(&cfg.Dapp)
 	if err != nil {
 		panic(err)
 	}
 
-	return &core.Wallet{
-		Client: c,
-		Pin:    cfg.Dapp.Pin,
-	}
+	return client
 }

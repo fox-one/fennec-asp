@@ -1,67 +1,64 @@
 package cmd
 
 import (
-	"fennec/handler"
+	"context"
+	"fennec/handler/api"
 	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/fox-one/mixin-sdk-go"
-	"github.com/fox-one/pkg/logger"
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	"github.com/drone/signal"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var apiCmd = &cobra.Command{
-	Use:   "api",
-	Short: "run api server",
+var serverCmd = &cobra.Command{
+	Use:   "server",
+	Short: "run Fennec ASP server",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx := cmd.Context()
-		log := logger.FromContext(ctx)
-
-		// dapp := provideDapp()
-		config := provideConfig()
-
-		auth, err := mixin.AuthFromKeystore(&config.Dapp.Keystore)
-		if err != nil {
-			auth, err = mixin.AuthEd25519FromKeystore(&config.Dapp.Keystore)
-			if err != nil {
-				log.Panic(err)
-			}
-		}
-
-		mux := chi.NewMux()
-		mux.Use(middleware.Recoverer)
-		mux.Use(middleware.StripSlashes)
-		mux.Use(logger.WithRequestID)
-		mux.Use(middleware.Logger)
-		mux.Use(middleware.NewCompressor(5).Handler)
-
-		{
-			mux.Mount("/hc", handler.HealthCheckHandler(rootCmd.Version))
-		}
-
-		{
-			mux.Mount("/api/v1", handler.MixinProxy(auth))
-		}
-
 		port, _ := cmd.Flags().GetInt("port")
-		addr := fmt.Sprintf(":%d", port)
-		server := http.Server{
+		host, _ := cmd.Flags().GetString("host")
+		addr := fmt.Sprintf("%s:%d", host, port)
+		ctx := context.Background()
+
+		api := api.New(debugMode,
+			rootCmd.Version,
+			provideDapp(),
+		)
+
+		srv := &http.Server{
 			Addr:    addr,
-			Handler: mux,
+			Handler: api.Handler(),
 		}
 
-		log.Infoln("api serve at ", addr)
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.WithError(err).Fatal("server aborted")
+		done := make(chan struct{}, 1)
+		signal.WithContextFunc(ctx, func() {
+			logrus.Debug("shutdown server...")
+
+			// create context with timeout
+			ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			if err := srv.Shutdown(ctx); err != nil {
+				logrus.WithError(err).Error("graceful shutdown server failed")
+			}
+
+			close(done)
+		})
+
+		logrus.Println("serve at", addr)
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			logrus.WithError(err).Fatal("server aborted")
 		}
+
+		<-done
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(apiCmd)
+	rootCmd.AddCommand(serverCmd)
 
-	apiCmd.Flags().IntP("port", "p", 80, "server port")
+	serverCmd.Flags().Int("port", 8081, "server port")
+	serverCmd.Flags().String("host", "", "server host")
 }
