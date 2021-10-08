@@ -12,6 +12,7 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/rs/cors"
 )
 
 const (
@@ -52,6 +53,8 @@ func (s Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(
 		middleware.Recoverer,
+		middleware.StripSlashes,
+		cors.AllowAll().Handler,
 		ip.WithClientIP,
 		logger.Logger,
 		s.TrimV1Prefix,
