@@ -40,13 +40,16 @@ func New(
 		panic(err)
 	}
 
-	return &Server{
+	s := Server{
 		debug:     debug,
 		version:   version,
 		startedAt: time.Now(),
 		client:    client,
 		proxy:     httputil.NewSingleHostReverseProxy(mixinEndpoint),
 	}
+	s.proxy.ModifyResponse = s.ModifyResponse
+
+	return &s
 }
 
 func (s Server) Handler() http.Handler {
@@ -80,4 +83,9 @@ func (s Server) TrimV1Prefix(next http.Handler) http.Handler {
 	}
 
 	return http.HandlerFunc(fn)
+}
+
+func (s Server) ModifyResponse(w *http.Response) error {
+	w.Header.Del("Access-Control-Allow-Origin")
+	return nil
 }
