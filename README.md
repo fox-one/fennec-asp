@@ -7,7 +7,7 @@ Fennec Account Service Provider
 
 // default config file: ./config/config.yaml
 // default server port: 80
-$fennec api --config xxxx --port 9000
+$./builds/fennec server --config xxxx --port 9000
 ```
 
 ## Deployment
