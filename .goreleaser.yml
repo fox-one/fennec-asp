@@ -1,0 +1,26 @@
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - main: .
+    id: fennecasp
+    binary: fennecasp
+    goos:
+      - linux
+      - darwin
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
+
+dockers:
+  - id: fennecasp
+    goos: linux
+    goarch: amd64
+    dockerfile: docker/Dockerfile
+    image_templates:
+    - "ghcr.io/fox-one/{{ .ProjectName }}/fennecasp:latest"
+    - "ghcr.io/fox-one/{{ .ProjectName }}/fennecasp:{{ .Major }}"
+    - "ghcr.io/fox-one/{{ .ProjectName }}/fennecasp:{{ .Major }}.{{ .Minor }}"
+    - "ghcr.io/fox-one/{{ .ProjectName }}/fennecasp:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
